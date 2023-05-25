@@ -1,18 +1,15 @@
+# %%
 import argparse
-
 import os
 import random
 import torch
-import math
 import numpy as np
-import torch.nn.functional as F
-from torch import nn, Tensor
+from torch import nn
 from load_data import DataGenerator
 from google_drive_downloader import GoogleDriveDownloader as gdd
 from torch.utils.tensorboard import SummaryWriter
-import torchvision
 
-
+# %%
 def initialize_weights(model):
     if type(model) in [nn.Linear]:
         nn.init.xavier_uniform_(model.weight)
@@ -23,7 +20,7 @@ def initialize_weights(model):
         nn.init.zeros_(model.bias_hh_l0)
         nn.init.zeros_(model.bias_ih_l0)
 
-
+# %%
 class MANN(nn.Module):
     def __init__(self, num_classes, samples_per_class, hidden_dim):
         super(MANN, self).__init__()
@@ -175,6 +172,7 @@ def main(config):
             times = []
 
 
+# %%
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--num_classes", type=int, default=5)
