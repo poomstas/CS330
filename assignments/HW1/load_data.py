@@ -1,12 +1,12 @@
+# %%
 import numpy as np
 import os
 import random
 import torch
 from torch.utils.data import IterableDataset
-import time
 import imageio
 
-
+# %%
 def get_images(paths, labels, nb_samples=None, shuffle=True):
     """
     Takes a set of character folders and labels and returns paths to image files
@@ -31,7 +31,7 @@ def get_images(paths, labels, nb_samples=None, shuffle=True):
         random.shuffle(images_labels)
     return images_labels
 
-
+# %%
 class DataGenerator(IterableDataset):
     """
     Data Generator capable of generating batches of Omniglot data.
