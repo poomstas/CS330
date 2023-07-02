@@ -27,7 +27,7 @@ def load_image(file_path):
     """
     x = imageio.imread(file_path)
     x = torch.tensor(x, dtype=torch.float32).reshape([1, 28, 28])
-    x = x / 255.0
+    # x = x / 255.0
     return 1 - x
 
 # %%
