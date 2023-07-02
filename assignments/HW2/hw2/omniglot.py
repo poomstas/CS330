@@ -1,3 +1,4 @@
+# %%
 """Dataloading for Omniglot."""
 import os
 import glob
@@ -13,7 +14,7 @@ NUM_VAL_CLASSES = 100
 NUM_TEST_CLASSES = 423
 NUM_SAMPLES_PER_CLASS = 20
 
-
+# %%
 def load_image(file_path):
     """Loads and transforms an Omniglot image.
 
@@ -29,7 +30,7 @@ def load_image(file_path):
     x = x / 255.0
     return 1 - x
 
-
+# %%
 class OmniglotDataset(dataset.Dataset):
     """Omniglot dataset for meta-learning.
 
@@ -42,6 +43,7 @@ class OmniglotDataset(dataset.Dataset):
     _BASE_PATH = './omniglot_resized'
     _GDD_FILE_ID = '1iaSFXIYC3AB8q9K_M-oVMa4pmB7yKMtI'
 
+    # %%
     def __init__(self, num_support, num_query):
         """Inits OmniglotDataset.
 
@@ -75,6 +77,7 @@ class OmniglotDataset(dataset.Dataset):
         self._num_support = num_support
         self._num_query = num_query
 
+    # %%
     def __getitem__(self, class_idxs):
         """Constructs a task.
 
@@ -122,7 +125,7 @@ class OmniglotDataset(dataset.Dataset):
 
         return images_support, labels_support, images_query, labels_query
 
-
+# %%
 class OmniglotSampler(sampler.Sampler):
     """Samples task specification keys for an OmniglotDataset."""
 
@@ -140,6 +143,7 @@ class OmniglotSampler(sampler.Sampler):
         self._num_way = num_way
         self._num_tasks = num_tasks
 
+    # %%
     def __iter__(self):
         return (
             np.random.default_rng().choice(
@@ -152,11 +156,11 @@ class OmniglotSampler(sampler.Sampler):
     def __len__(self):
         return self._num_tasks
 
-
+# %%
 def identity(x):
     return x
 
-
+# %%
 def get_omniglot_dataloader(
         split,
         batch_size,
