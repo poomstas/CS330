@@ -1,16 +1,17 @@
-"""Utilities for scoring the model."""
+# %%
 import torch
 
+# %%
+''' Utilities for scoring the model. '''
 
 def score(logits, labels):
-    """Returns the mean accuracy of a model's predictions on a set of examples.
+    ''' Returns the mean accuracy of a model's predictions on a set of examples.
 
     Args:
         logits (torch.Tensor): model predicted logits
             shape (examples, classes)
         labels (torch.Tensor): classification labels from 0 to num_classes - 1
-            shape (examples,)
-    """
+            shape (examples,) '''
 
     assert logits.dim() == 2
     assert labels.dim() == 1
