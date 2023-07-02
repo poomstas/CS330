@@ -1,5 +1,5 @@
+# %%
 """Implementation of prototypical networks for Omniglot."""
-
 import argparse
 import os
 
@@ -23,7 +23,7 @@ PRINT_INTERVAL = 10
 VAL_INTERVAL = PRINT_INTERVAL * 5
 NUM_TEST_TASKS = 600
 
-
+# %%
 class ProtoNetNetwork(nn.Module):
     """Container for ProtoNet weights and image-to-latent computation."""
 
@@ -60,6 +60,7 @@ class ProtoNetNetwork(nn.Module):
         self._layers = nn.Sequential(*layers)
         self.to(DEVICE)
 
+    # %%
     def forward(self, images):
         """Computes the latent representation of a batch of images.
 
@@ -73,7 +74,7 @@ class ProtoNetNetwork(nn.Module):
         """
         return self._layers(images)
 
-
+# %%
 class ProtoNet:
     """Trains and assesses a prototypical network."""
 
@@ -95,6 +96,7 @@ class ProtoNet:
 
         self._start_train_step = 0
 
+    # %%
     def _step(self, task_batch):
         """Computes ProtoNet mean loss (and accuracy) on a batch of tasks.
 
@@ -136,6 +138,7 @@ class ProtoNet:
             np.mean(accuracy_query_batch)
         )
 
+    # %%
     def train(self, dataloader_train, dataloader_val, writer):
         """Train the ProtoNet.
 
@@ -211,6 +214,7 @@ class ProtoNet:
             if i_step % SAVE_INTERVAL == 0:
                 self._save(i_step)
 
+    # %%
     def test(self, dataloader_test):
         """Evaluate the ProtoNet on test tasks.
 
@@ -229,6 +233,7 @@ class ProtoNet:
             f'95% confidence interval {mean_95_confidence_interval:.3f}'
         )
 
+    # %%
     def load(self, checkpoint_step):
         """Loads a checkpoint.
 
@@ -253,6 +258,7 @@ class ProtoNet:
                 f'No checkpoint for iteration {checkpoint_step} found.'
             )
 
+    # %%
     def _save(self, checkpoint_step):
         """Saves network and optimizer state_dicts as a checkpoint.
 
@@ -266,7 +272,7 @@ class ProtoNet:
         )
         print('Saved checkpoint.')
 
-
+# %%
 def main(args):
     log_dir = args.log_dir
     if log_dir is None:
@@ -328,7 +334,7 @@ def main(args):
         )
         protonet.test(dataloader_test)
 
-
+# %%
 if __name__ == '__main__':
     parser = argparse.ArgumentParser('Train a ProtoNet!')
     parser.add_argument('--log_dir', type=str, default=None,
