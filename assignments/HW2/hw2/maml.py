@@ -1,18 +1,17 @@
-"""Implementation of model-agnostic meta-learning for Omniglot."""
+# %% Implementation of model-agnostic meta-learning for Omniglot.
 
 import argparse
 import os
-
 import numpy as np
 import torch
 from torch import nn
 import torch.nn.functional as F
 from torch import autograd
 from torch.utils import tensorboard
-
 import omniglot
 import util
 
+# %%
 NUM_INPUT_CHANNELS = 1
 NUM_HIDDEN_CHANNELS = 64
 KERNEL_SIZE = 3
@@ -24,10 +23,9 @@ LOG_INTERVAL = 10
 VAL_INTERVAL = LOG_INTERVAL * 5
 NUM_TEST_TASKS = 600
 
-
+# %%
 class MAML:
-    """Trains and assesses a MAML."""
-
+    ''' Trains and assesses a MAML. '''
     def __init__(
             self,
             num_outputs,
@@ -37,7 +35,7 @@ class MAML:
             outer_lr,
             log_dir
     ):
-        """Inits MAML.
+        ''' Inits MAML.
 
         The network consists of four convolutional blocks followed by a linear
         head layer. Each convolutional block comprises a convolution layer, a
@@ -58,7 +56,7 @@ class MAML:
             learn_inner_lrs (bool): whether to learn the above
             outer_lr (float): learning rate for outer-loop optimization
             log_dir (str): path to logging directory
-        """
+        '''
         meta_parameters = {}
 
         # construct feature extractor
@@ -118,8 +116,9 @@ class MAML:
 
         self._start_train_step = 0
 
+    # %%
     def _forward(self, images, parameters):
-        """Computes predicted classification logits.
+        ''' Computes predicted classification logits.
 
         Args:
             images (Tensor): batch of Omniglot images
@@ -130,7 +129,7 @@ class MAML:
         Returns:
             a Tensor consisting of a batch of logits
                 shape (num_images, classes)
-        """
+        '''
         x = images
         for i in range(NUM_CONV_LAYERS):
             x = F.conv2d(
@@ -149,8 +148,9 @@ class MAML:
             bias=parameters[f'b{NUM_CONV_LAYERS}']
         )
 
+    # %%
     def _inner_loop(self, images, labels, train):
-        """Computes the adapted network parameters via the MAML inner loop.
+        ''' Computes the adapted network parameters via the MAML inner loop.
 
         Args:
             images (Tensor): task support set inputs
@@ -163,7 +163,7 @@ class MAML:
             parameters (dict[str, Tensor]): adapted network parameters
             accuracies (list[float]): support set accuracy over the course of
                 the inner loop, length num_inner_steps + 1
-        """
+        '''
         accuracies = []
         parameters = {
             k: torch.clone(v)
@@ -174,19 +174,20 @@ class MAML:
         # ********************************************************
         # TODO: finish implementing this method.
         # This method computes the inner loop (adaptation) procedure
-        # over the course of _num_inner_steps steps for one
-        # task. It also scores the model along the way.
-        # Make sure to populate accuracies and update parameters.
-        # Use F.cross_entropy to compute classification losses.
-        # Use util.score to compute accuracies.
+        #       over the course of _num_inner_steps steps for one
+        #       task. It also scores the model along the way.
+        # TODO: Make sure to populate accuracies and update parameters.
+        # TODO: Use F.cross_entropy to compute classification losses.
+        # TODO: Use util.score to compute accuracies.
 
         # ********************************************************
         # ******************* YOUR CODE HERE *********************
         # ********************************************************
         return parameters, accuracies
 
+    # %%
     def _outer_step(self, task_batch, train):
-        """Computes the MAML loss and metrics on a batch of tasks.
+        ''' Computes the MAML loss and metrics on a batch of tasks.
 
         Args:
             task_batch (tuple): batch of tasks from an Omniglot DataLoader
@@ -199,7 +200,7 @@ class MAML:
                 shape (num_inner_steps + 1,)
             accuracy_query (float): query set accuracy of the adapted
                 parameters, averaged over the task batch
-        """
+        '''
         outer_loss_batch = []
         accuracies_support_batch = []
         accuracy_query_batch = []
@@ -212,14 +213,13 @@ class MAML:
             # ********************************************************
             # ******************* YOUR CODE HERE *********************
             # ********************************************************
-            # TODO: finish implementing this method.
-            # For a given task, use the _inner_loop method to adapt for
-            # _num_inner_steps steps, then compute the MAML loss and other
-            # metrics.
-            # Use F.cross_entropy to compute classification losses.
-            # Use util.score to compute accuracies.
-            # Make sure to populate outer_loss_batch, accuracies_support_batch,
-            # and accuracy_query_batch.
+            import pdb; pdb.set_trace()
+            # TODO: Finish implementing this method.
+            # TODO: For a given task, use the _inner_loop method to adapt for
+            #       _num_inner_steps steps, then compute the MAML loss and other metrics.
+            # TODO: Use F.cross_entropy to compute classification losses.
+            # TODO: Use util.score to compute accuracies.
+            # TODO: Make sure to populate outer_loss_batch, accuracies_support_batch, and accuracy_query_batch.
 
             # ********************************************************
             # ******************* YOUR CODE HERE *********************
@@ -232,8 +232,9 @@ class MAML:
         accuracy_query = np.mean(accuracy_query_batch)
         return outer_loss, accuracies_support, accuracy_query
 
+    # %%
     def train(self, dataloader_train, dataloader_val, writer):
-        """Train the MAML.
+        ''' Train the MAML.
 
         Consumes dataloader_train to optimize MAML meta-parameters
         while periodically validating on dataloader_val, logging metrics, and
@@ -243,7 +244,7 @@ class MAML:
             dataloader_train (DataLoader): loader for train tasks
             dataloader_val (DataLoader): loader for validation tasks
             writer (SummaryWriter): TensorBoard logger
-        """
+        '''
         print(f'Starting training at iteration {self._start_train_step}.')
         for i_step, task_batch in enumerate(
                 dataloader_train,
@@ -337,12 +338,13 @@ class MAML:
             if i_step % SAVE_INTERVAL == 0:
                 self._save(i_step)
 
+    # %%
     def test(self, dataloader_test):
-        """Evaluate the MAML on test tasks.
+        ''' Evaluate the MAML on test tasks.
 
         Args:
             dataloader_test (DataLoader): loader for test tasks
-        """
+        '''
         accuracies = []
         for task_batch in dataloader_test:
             _, _, accuracy_query = self._outer_step(task_batch, train=False)
@@ -356,15 +358,16 @@ class MAML:
             f'95% confidence interval {mean_95_confidence_interval:.3f}'
         )
 
+    # %%
     def load(self, checkpoint_step):
-        """Loads a checkpoint.
+        ''' Loads a checkpoint.
 
         Args:
             checkpoint_step (int): iteration of checkpoint to load
 
         Raises:
             ValueError: if checkpoint for checkpoint_step is not found
-        """
+        '''
         target_path = (
             f'{os.path.join(self._log_dir, "state")}'
             f'{checkpoint_step}.pt'
@@ -381,12 +384,13 @@ class MAML:
                 f'No checkpoint for iteration {checkpoint_step} found.'
             )
 
+    # %%
     def _save(self, checkpoint_step):
-        """Saves parameters and optimizer state_dict as a checkpoint.
+        ''' Saves parameters and optimizer state_dict as a checkpoint.
 
         Args:
             checkpoint_step (int): iteration to label checkpoint with
-        """
+        '''
         optimizer_state_dict = self._optimizer.state_dict()
         torch.save(
             dict(meta_parameters=self._meta_parameters,
@@ -396,7 +400,7 @@ class MAML:
         )
         print('Saved checkpoint.')
 
-
+# %%
 def main(args):
     log_dir = args.log_dir
     if log_dir is None:
@@ -465,7 +469,7 @@ def main(args):
         )
         maml.test(dataloader_test)
 
-
+# %%
 if __name__ == '__main__':
     parser = argparse.ArgumentParser('Train a MAML!')
     parser.add_argument('--log_dir', type=str, default=None,
