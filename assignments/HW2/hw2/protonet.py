@@ -16,7 +16,7 @@ NUM_INPUT_CHANNELS = 1
 NUM_HIDDEN_CHANNELS = 64
 KERNEL_SIZE = 3
 NUM_CONV_LAYERS = 4
-DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
+DEVICE = 'cuda:1' if torch.cuda.is_available() else 'cpu'
 SUMMARY_INTERVAL = 10
 SAVE_INTERVAL = 100
 PRINT_INTERVAL = 10
@@ -110,28 +110,35 @@ class ProtoNet:
             mean support set accuracy over the batch as a float
             mean query set accuracy over the batch as a float
         """
-        loss_batch = []
-        accuracy_support_batch = []
-        accuracy_query_batch = []
+        loss_batch, accuracy_support_batch, accuracy_query_batch = [], [], []
+
         for task in task_batch:
             images_support, labels_support, images_query, labels_query = task
             images_support = images_support.to(DEVICE)
             labels_support = labels_support.to(DEVICE)
             images_query = images_query.to(DEVICE)
             labels_query = labels_query.to(DEVICE)
-            # ********************************************************
-            # ******************* YOUR CODE HERE *********************
-            # ********************************************************
-            # TODO: finish implementing this method.
-            # For a given task, compute the prototypes and the protonet loss.
-            # Use F.cross_entropy to compute classification losses.
-            # Use util.score to compute accuracies.
-            # Make sure to populate loss_batch, accuracy_support_batch, and
-            # accuracy_query_batch.
 
-            # ********************************************************
-            # ******************* YOUR CODE HERE *********************
-            # ********************************************************
+            embedding_support = self._network(images_support)
+            embedding_query = self._network(images_query)
+
+            # Calculate prototypes by class: https://stackoverflow.com/questions/56154604/groupby-aggregate-mean-in-pytorch
+            M = torch.zeros(labels_support.max()+1, len(embedding_support)).to(DEVICE)
+            M[labels_support, torch.arange(len(labels_support))] = 1
+            M = torch.nn.functional.normalize(M, p=1, dim=1)
+            prototypes = torch.mm(M, embedding_support)
+
+            # Compute accuracy and loss
+            sq_dist_support = torch.square(torch.cdist(embedding_support, prototypes))
+            sq_dist_query = torch.square(torch.cdist(embedding_query, prototypes))
+
+            softmax_support = torch.nn.Softmax(dim=1)(-sq_dist_support)
+            softmax_query = torch.nn.Softmax(dim=1)(-sq_dist_query)
+
+            accuracy_support_batch.append(util.score(softmax_support, labels_support))
+            accuracy_query_batch.append(util.score(softmax_query, labels_query))
+            loss_batch.append(F.cross_entropy(softmax_query, labels_query))
+
         return (
             torch.mean(torch.stack(loss_batch)),
             np.mean(accuracy_support_batch),
@@ -341,13 +348,13 @@ if __name__ == '__main__':
                         help='directory to save to or load from')
     parser.add_argument('--num_way', type=int, default=5,
                         help='number of classes in a task')
-    parser.add_argument('--num_support', type=int, default=1,
+    parser.add_argument('--num_support', type=int, default=5,
                         help='number of support examples per class in a task')
     parser.add_argument('--num_query', type=int, default=15,
                         help='number of query examples per class in a task')
     parser.add_argument('--learning_rate', type=float, default=0.001,
                         help='learning rate for the network')
-    parser.add_argument('--batch_size', type=int, default=16,
+    parser.add_argument('--batch_size', type=int, default=256,
                         help='number of tasks per outer-loop update')
     parser.add_argument('--num_train_iterations', type=int, default=5000,
                         help='number of outer-loop updates to train for')
