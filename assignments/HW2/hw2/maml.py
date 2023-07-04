@@ -1,4 +1,5 @@
-# %% Implementation of model-agnostic meta-learning for Omniglot.
+# %% 
+''' Implementation of model-agnostic meta-learning for Omniglot. '''
 
 import argparse
 import os
@@ -16,7 +17,7 @@ NUM_INPUT_CHANNELS = 1
 NUM_HIDDEN_CHANNELS = 64
 KERNEL_SIZE = 3
 NUM_CONV_LAYERS = 4
-DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
+DEVICE = 'cuda:1' if torch.cuda.is_available() else 'cpu'
 SUMMARY_INTERVAL = 10
 SAVE_INTERVAL = 100
 LOG_INTERVAL = 10
@@ -151,6 +152,8 @@ class MAML:
     # %%
     def _inner_loop(self, images, labels, train):
         ''' Computes the adapted network parameters via the MAML inner loop.
+            This method computes the inner loop (adaptation) procedure over the course of 
+            _num_inner_steps steps for one task. It also scores the model along the way.
 
         Args:
             images (Tensor): task support set inputs
@@ -160,30 +163,24 @@ class MAML:
             train (bool): whether we are training or evaluating
 
         Returns:
-            parameters (dict[str, Tensor]): adapted network parameters
+            params (dict[str, Tensor]): adapted network parameters
             accuracies (list[float]): support set accuracy over the course of
                 the inner loop, length num_inner_steps + 1
         '''
         accuracies = []
-        parameters = {
-            k: torch.clone(v)
-            for k, v in self._meta_parameters.items()
-        }
-        # ********************************************************
-        # ******************* YOUR CODE HERE *********************
-        # ********************************************************
-        # TODO: finish implementing this method.
-        # This method computes the inner loop (adaptation) procedure
-        #       over the course of _num_inner_steps steps for one
-        #       task. It also scores the model along the way.
-        # TODO: Make sure to populate accuracies and update parameters.
-        # TODO: Use F.cross_entropy to compute classification losses.
-        # TODO: Use util.score to compute accuracies.
+        params = {k: torch.clone(v) for k, v in self._meta_parameters.items()}
 
-        # ********************************************************
-        # ******************* YOUR CODE HERE *********************
-        # ********************************************************
-        return parameters, accuracies
+        for _ in range(self._num_inner_steps):
+            logits = self._forward(images, params)
+            accuracies.append(util.score(logits, labels))
+
+            clf_loss = F.cross_entropy(logits, labels) # nn.LogSoftmax is included here
+            grads = autograd.grad(clf_loss, params.values(), create_graph=train)
+
+            for (key, value), grad in zip(params.items(), grads):
+                params[key] = value - self._inner_lrs[key] * grad # Not the same thing as params[key] -= self._inner_lrs[key] * grad
+
+        return params, accuracies
 
     # %%
     def _outer_step(self, task_batch, train):
@@ -201,28 +198,32 @@ class MAML:
             accuracy_query (float): query set accuracy of the adapted
                 parameters, averaged over the task batch
         '''
-        outer_loss_batch = []
-        accuracies_support_batch = []
-        accuracy_query_batch = []
+        outer_loss_batch, accuracies_support_batch, accuracy_query_batch = [], [], []
+
         for task in task_batch:
             images_support, labels_support, images_query, labels_query = task
             images_support = images_support.to(DEVICE)
             labels_support = labels_support.to(DEVICE)
             images_query = images_query.to(DEVICE)
             labels_query = labels_query.to(DEVICE)
-            # ********************************************************
-            # ******************* YOUR CODE HERE *********************
-            # ********************************************************
-            import pdb; pdb.set_trace()
-            # TODO: Finish implementing this method.
-            # TODO: For a given task, use the _inner_loop method to adapt for
-            #       _num_inner_steps steps, then compute the MAML loss and other metrics.
-            # TODO: Use F.cross_entropy to compute classification losses.
-            # TODO: Use util.score to compute accuracies.
-            # TODO: Make sure to populate outer_loss_batch, accuracies_support_batch, and accuracy_query_batch.
 
-            # ********************************************************
             # ******************* YOUR CODE HERE *********************
+            # - For a given task, use the _inner_loop method to adapt for _num_inner_steps steps, then compute the MAML loss and other metrics.
+            # - Use F.cross_entropy to compute classification losses.
+            # - Use util.score to compute accuracies.
+            # - Make sure to populate outer_loss_batch, accuracies_support_batch, and accuracy_query_batch.
+
+            params, acc_support = self._inner_loop(images_support, labels_support, train)
+
+            logits_query = self._forward(images_query, params)
+
+            outer_loss = F.cross_entropy(logits_query, labels_query)
+            acc_query = util.score(logits_query, labels_query)
+
+            outer_loss_batch.append(outer_loss)
+            accuracy_query_batch.append(acc_query)
+            accuracies_support_batch.append(acc_support)
+
             # ********************************************************
         outer_loss = torch.mean(torch.stack(outer_loss_batch))
         accuracies_support = np.mean(
@@ -308,6 +309,7 @@ class MAML:
                 accuracy_post_adapt_query = np.mean(
                     accuracies_post_adapt_query
                 )
+                print('='*90)
                 print(
                     f'Validation: '
                     f'loss: {loss:.3f}, '
@@ -318,6 +320,7 @@ class MAML:
                     f'post-adaptation query accuracy: '
                     f'{accuracy_post_adapt_query:.3f}'
                 )
+                print('='*90)
                 writer.add_scalar('loss/val', loss, i_step)
                 writer.add_scalar(
                     'val_accuracy/pre_adapt_support',
