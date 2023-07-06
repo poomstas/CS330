@@ -1,3 +1,7 @@
+# %%
+import torch.multiprocessing
+torch.multiprocessing.set_sharing_strategy('file_system')
+
 # %% 
 ''' Implementation of model-agnostic meta-learning for Omniglot. '''
 
@@ -179,6 +183,10 @@ class MAML:
 
             for (key, value), grad in zip(params.items(), grads):
                 params[key] = value - self._inner_lrs[key] * grad # Not the same thing as params[key] -= self._inner_lrs[key] * grad
+        
+        with torch.no_grad():
+            logits = self._forward(images, params)
+            accuracies.append(util.score(logits, labels))
 
         return params, accuracies
 
@@ -207,16 +215,9 @@ class MAML:
             images_query = images_query.to(DEVICE)
             labels_query = labels_query.to(DEVICE)
 
-            # ******************* YOUR CODE HERE *********************
-            # - For a given task, use the _inner_loop method to adapt for _num_inner_steps steps, then compute the MAML loss and other metrics.
-            # - Use F.cross_entropy to compute classification losses.
-            # - Use util.score to compute accuracies.
-            # - Make sure to populate outer_loss_batch, accuracies_support_batch, and accuracy_query_batch.
-
             params, acc_support = self._inner_loop(images_support, labels_support, train)
 
             logits_query = self._forward(images_query, params)
-
             outer_loss = F.cross_entropy(logits_query, labels_query)
             acc_query = util.score(logits_query, labels_query)
 
@@ -224,7 +225,6 @@ class MAML:
             accuracy_query_batch.append(acc_query)
             accuracies_support_batch.append(acc_support)
 
-            # ********************************************************
         outer_loss = torch.mean(torch.stack(outer_loss_batch))
         accuracies_support = np.mean(
             accuracies_support_batch,
